@@ -21,11 +21,44 @@ float clamp(float x, float h, float l)
     return std::min<float>(h, std::max<float>(l, x));
 }
 
+struct RandomWalker : public g::game::fps_camera
+{
+		std::random_device rd;
+		std::mt19937 gen;
+
+		vec<2> pitch_yaw_dot;
+
+		RandomWalker() : gen(rd())
+		{
+				position = { 0, 0, 0 };
+				speed = 0.1;
+		}
+
+		void update(float dt, float t)
+		{
+				std::normal_distribution<float> speed_dist(0, 0.1);
+				std::normal_distribution<float> pitch_dist(0, 0.1);
+				std::normal_distribution<float> yaw_dist(0, 0.05);
+
+				speed += speed_dist(gen);
+				speed = std::clamp(speed, 0.25f, 2.f);
+
+				pitch_yaw_dot += { 0 * pitch_dist(gen), yaw_dist(gen) };
+				pitch_yaw_dot = pitch_yaw_dot.clamp({-1, -1}, {1, 1});
+				velocity += body_forward() * speed;
+
+				position += velocity * dt;
+				pitch += pitch_yaw_dot[0] * dt;
+				yaw += pitch_yaw_dot[1] * dt;
+		}
+};
+
+
 struct my_core : public g::core
 {
     g::gfx::shader basic_shader;
     g::asset::store assets;
-    g::game::fps_camera cam;
+    RandomWalker cam;
     std::vector<int8_t> v[3];
 
     g::gfx::density_volume<g::gfx::vertex::pos_norm_tan>* terrain;
@@ -99,8 +132,8 @@ struct my_core : public g::core
         terrain->depth = 4; // resolution of terrain blocks
 
         // Position the camera, define the player's height
-        cam.position = { 0, 1100, 0 };
-        cam.foot_offset = { 0, -1.5, 0 };
+        cam.position = { 0, 1020, 0 };
+        cam.foot_offset = { 0, -2.5, 0 };
 
         // Setup camera input
         cam.on_input = [](fps_camera& cam, float dt){
